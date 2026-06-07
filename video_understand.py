@@ -1,38 +1,82 @@
-import dashscope
 import os
-from config import API_KEY
 import json
+import base64
+from openai import OpenAI
+from config import ARK_API_KEY, ARK_BASE_URL, ARK_VISION_ENDPOINT
 from get_duration import get_video_duration_func
+import cv2
 
-def video_understand_func(video_path,duration):
-    messages = [
-        {"role":"system",
-         "content":[
-            {"text": """# 角色
-你是一位视频内容和运镜理解专家，擅长按时间先后顺序给出每个子片段的视频内容和运镜风格，视频内容的表达需要有逻辑性，给到后期阅读编排视频脚本参考：
-#### 开始时间-结束时间，格式:0s-3s
+def extract_frames_base64(video_path, fps=1):
+    """从视频中抽取帧并转为base64编码"""
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        raise ValueError("无法打开视频文件")
+    
+    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    frame_interval = int(video_fps / fps)
+    frames_base64 = []
+    frame_count = 0
+    
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        
+        if frame_count % frame_interval == 0:
+            _, buffer = cv2.imencode('.jpg', frame)
+            base64_str = base64.b64encode(buffer).decode('utf-8')
+            frames_base64.append(f"data:image/jpeg;base64,{base64_str}")
+        
+        frame_count += 1
+    
+    cap.release()
+    return frames_base64
+
+def video_understand_func(video_path, duration):
+    client = OpenAI(
+        api_key=ARK_API_KEY,
+        base_url=ARK_BASE_URL
+    )
+    
+    # 抽取视频帧
+    frames = extract_frames_base64(video_path, fps=1)
+    if not frames:
+        raise ValueError("无法从视频中抽取帧")
+    
+    # 构建消息
+    content = []
+    for i, frame_base64 in enumerate(frames):
+        content.append({
+            "type": "image_url",
+            "image_url": {"url": frame_base64}
+        })
+    
+    content.append({
+        "type": "text",
+        "text": f"""这段视频时长为{duration}秒，包含{len(frames)}帧。请按时间顺序分析每个时间段的视频内容和运镜风格，输出格式如下：
+#### 时间范围，格式:0s-3s
 **视频内容：**
-**运镜风格：** """}]},
-    #          {"text": """# 角色
-    # 你是一位视频内容和运镜理解专家，擅长按时间先后顺序给出每个子片段的视频内容和运镜风格"""}]},
-        {"role": "user",
-            "content": [
-                # fps 可参数控制视频抽帧频率，表示每隔1/fps 秒抽取一帧，完整用法请参见：https://help.aliyun.com/zh/model-studio/use-qwen-by-calling-api?#2ed5ee7377fum
-                # {"video": "https://cloud.video.taobao.com/vod/C6gCj5AJ3Qrd_UQ9kaMVRY9Ig9G-WToxVYSPRdNXCao.mp4","fps":2},
-                {"video": video_path,"fps":1},
-                {"text": f"这段视频的时长为{duration}s"} #这个时长信息对于模型理解时间轴很重要
-            ]
+**运镜风格：**"""
+    })
+    
+    messages = [
+        {
+            "role": "system",
+            "content": "你是一位视频内容和运镜理解专家，擅长按时间先后顺序分析视频片段的内容和拍摄风格。"
+        },
+        {
+            "role": "user",
+            "content": content
         }
     ]
-
-    response = dashscope.MultiModalConversation.call(
-        # 若没有配置环境变量， 请用百炼API Key将下行替换为： api_key ="sk-xxx"
-        api_key=API_KEY,
-        model='qwen-vl-max-latest',
+    
+    response = client.chat.completions.create(
+        model=ARK_VISION_ENDPOINT,
         messages=messages,
         temperature=0
     )
-    return response.output.choices[0].message.content[0]["text"]
+    
+    return response.choices[0].message.content
 
 def main():
     output_dir = "/Users/elvis/workspace/code/ai-cutting/video_part/"  # 拆分后的片段目录
@@ -63,33 +107,6 @@ def main():
                         json.dump(res_list, f, ensure_ascii=False, indent=2)
                 except Exception as e:
                     print(f"理解视频内容时发生错误: {e}")
-    # print("开始理解视频内容...")
-    # video_dir = '/Users/elvis/workspace/code/ai-cutting/video_part'  # 文件夹路径
-    # duration = 30  # 你可以根据实际情况获取每个视频的时长
-
-    # for filename in os.listdir(video_dir):
-    #     video_path = os.path.join(video_dir, filename)
-    #     if not os.path.isfile(video_path):
-    #         continue  # 跳过子文件夹等非文件项
-    #     get_video_duration_func = __import__('get_duration').get_video_duration_func
-    #     duration = get_video_duration_func(video_path)  # 获取视频时长
-
-    #     print(f"理解视频内容 starting for video: {video_path} with duration: {duration} seconds")
-    #     try:
-    #         res = video_understand_func(video_path, duration)
-    #         print(f"视频理解结果: {res}")
-    #     except Exception as e:
-    #         print(f"理解视频内容时发生错误: {e}")
-#     print("视频理解完成。")   
-
-    # video_path = '/Users/elvis/workspace/code/ai-cutting/video_part/segment_002.mp4'  # 请替换为你的视频文件路径
-    # duration = 30  # 假设视频时长为30秒 
-    # try:
-    #     res = video_understand_func(video_path, duration)
-    #     print(f"视频理解结果: {res}")
-    # except Exception as e:
-    #     print(f"理解视频内容时发生错误: {e}")
-
 
 if __name__ == "__main__":
     main()

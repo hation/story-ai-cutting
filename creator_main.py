@@ -1,6 +1,6 @@
 from reformat_context import parse_segments
-from split_video import split_all_videos_in_dir
-from video_cut import video_cut_func
+from split_video import split_video_by_duration_ffmpeg
+# from video_cut import video_cut_func  # 暂未使用，注释避免 dashscope 依赖
 from video_understand import video_understand_func
 from get_duration import get_video_duration_func
 from context_create import ctx_creator
@@ -10,12 +10,29 @@ import os
 import json
 
 if __name__ == '__main__':
-
-    input_dir = "/Users/elvis/workspace/code/ai-cutting/source/"  # 替换为你的输入视频路径
-    output_dir = "/Users/elvis/workspace/code/ai-cutting/video_part/"  # 输出目录
-    operation_dir = "/Users/elvis/workspace/code/ai-cutting/video_part/source/"  # 输出目录
-
-    split_all_videos_in_dir (input_dir, output_dir, segment_duration=30)#分割原始视频，分片为30秒内的片段，AI理解语义效率更高
+    # 获取当前脚本所在目录
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    
+    # ========== 配置要处理的视频文件 ==========
+    # 在这里指定要处理的视频文件名（必须放在 source/ 目录下）
+    VIDEO_FILENAME = "6.6.MP4"  # 修改这里来选择要处理的视频
+    # VIDEO_FILENAME = "source.mp4"  # 取消注释来处理 source.mp4
+    # ==========================================
+    
+    input_dir = os.path.join(current_dir, "source/")  # 输入视频目录
+    video_path = os.path.join(input_dir, VIDEO_FILENAME)  # 完整视频路径
+    video_name = os.path.splitext(VIDEO_FILENAME)[0]  # 不带扩展名的视频名
+    
+    output_dir = os.path.join(current_dir, "video_part/")  # 输出目录
+    operation_dir = os.path.join(output_dir, video_name)  # 当前视频的片段目录
+    
+    # 检查视频文件是否存在
+    if not os.path.exists(video_path):
+        print(f"错误：视频文件 {video_path} 不存在！")
+        exit(1)
+    
+    # 只分割指定的视频文件
+    split_video_by_duration_ffmpeg(video_path, operation_dir, segment_duration=30)
 
     # 创建数据目录和理解结果文件
     data_dir = "./output_data"
@@ -26,16 +43,17 @@ if __name__ == '__main__':
     combine_video_json_path = os.path.join(data_dir, "combine_video.json")
     result_path = os.path.join(data_dir, "result.mp4")
     res_list = []
-   # 遍历所有子目录和文件，找到所有mp4文件
-    for root, dirs, files in os.walk(output_dir):
+    
+    # 只遍历当前视频的片段目录
+    for root, dirs, files in os.walk(operation_dir):
         for filename in files:
             if filename.lower().endswith(('.mp4', '.mov', '.avi', '.mkv')):
-                video_path = os.path.join(root, filename)
-                duration = get_video_duration_func(video_path)
-                log_msg = f"理解视频内容 starting for video: {video_path} with duration: {duration} seconds"
+                segment_path = os.path.join(root, filename)
+                duration = get_video_duration_func(segment_path)
+                log_msg = f"理解视频内容 starting for video: {segment_path} with duration: {duration} seconds"
                 print(log_msg)
                 try:
-                    res = video_understand_func(video_path, duration)
+                    res = video_understand_func(segment_path, duration)
                     print(f"视频理解结果: {res}")
                     res_list.append({
                         "log": log_msg,

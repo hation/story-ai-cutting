@@ -1,0 +1,13 @@
+# 方舟平台配置
+ARK_API_KEY = '你的方舟API Key'
+ARK_BASE_URL = 'https://ark.cn-beijing.volces.com/api/coding/v3'
+ARK_TEXT_ENDPOINT = 'deepseek-v3.2'
+ARK_VISION_ENDPOINT = 'doubao-seed-2.0-lite'
+
+# 旧版百炼配置（保留兼容）
+API_KEY = ''
+
+# BGM 配置
+BGM_ENABLE = False  # 是否启用BGM
+BGM_PATH = "./bgm/"  # BGM文件目录
+BGM_VOLUME = 0.3  # BGM音量（相对于原视频音频，0-1）
