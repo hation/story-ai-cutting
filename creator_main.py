@@ -6,6 +6,7 @@ from get_duration import get_video_duration_func
 from context_create import ctx_creator
 from relocate import extract_uuid_list, load_json_data, build_uuid_map, find_clips_by_uuid
 from combine_video import extract_and_concat
+from config import DEFAULT_STORY_REQUIREMENT
 import os
 import json
 
@@ -17,6 +18,22 @@ if __name__ == '__main__':
     # 在这里指定要处理的视频文件名（必须放在 source/ 目录下）
     VIDEO_FILENAME = "6.6.MP4"  # 修改这里来选择要处理的视频
     # VIDEO_FILENAME = "source.mp4"  # 取消注释来处理 source.mp4
+    # ==========================================
+    
+    # ========== 配置剧情需求 ==========
+    # 在这里修改你想要的剧情风格和时长要求
+    # 示例1：海滩旅游视频
+    # STORY_REQUIREMENT = """要一个海滩旅游的短视频，视频总时长需要120秒，希望有记忆点以及有对应的开头高潮起伏，使得视频观看者更容易留下持续观看。"""
+    
+    # 示例2：运动健身视频
+    # STORY_REQUIREMENT = """要一个运动健身的短视频，视频总时长需要90秒，希望展现运动的热血和激情，有节奏感的剪辑，突出运动动作的力度和美感。"""
+    
+    # 示例3：城市风光视频
+    # STORY_REQUIREMENT = """要一个城市风光的短视频，视频总时长需要60秒，希望展现城市的繁华和现代感，有快节奏的剪辑，突出建筑的宏伟和街道的活力。"""
+    
+    # 示例4：使用默认配置
+    STORY_REQUIREMENT = DEFAULT_STORY_REQUIREMENT
+    
     # ==========================================
     
     input_dir = os.path.join(current_dir, "source/")  # 输入视频目录
@@ -76,10 +93,9 @@ if __name__ == '__main__':
         f.write(reformat_data)
 
     # 生成剧情
-     # 读取 reformat_data.json 作为 ctx_creator 的输入
-
-    req = """要一个海滩旅游的短视频，视频总时长需要120秒，希望有记忆点以及有对应的开头高潮起伏，使得视频观看者更容易留下持续观看。"""
-    res = ctx_creator(req, reformat_data)
+    # 使用配置的剧情需求
+    print(f"剧情需求: {STORY_REQUIREMENT}")
+    res = ctx_creator(STORY_REQUIREMENT, reformat_data)
     with open(storty_path, 'w', encoding='utf-8') as f:
         f.write(str(res))
 

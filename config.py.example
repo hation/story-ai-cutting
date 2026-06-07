@@ -11,3 +11,7 @@ API_KEY = ''
 BGM_ENABLE = False  # 是否启用BGM
 BGM_PATH = "./bgm/"  # BGM文件目录
 BGM_VOLUME = 0.3  # BGM音量（相对于原视频音频，0-1）
+
+# 剧情配置
+# 默认剧情需求（可在 creator_main.py 中覆盖）
+DEFAULT_STORY_REQUIREMENT = """要一个海滩旅游的短视频，视频总时长需要120秒，希望有记忆点以及有对应的开头高潮起伏，使得视频观看者更容易留下持续观看。"""
